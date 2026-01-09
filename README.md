@@ -106,13 +106,15 @@ To update later: `uv tool upgrade anthroping`
 | `error` | Something went wrong | Basso |
 | `waiting` | Claude is waiting for approval | Purr |
 | `thinking` | Long task in progress | Pop |
+| `subagent` | Background task (subagent) finished | Blow |
 
 ## Options
 
 | Option | Description |
 |--------|-------------|
 | `--alert` | Show as popup dialog instead of notification |
-| `--project PATH` | Include project name and "Go to Window" button for Cursor |
+| `--project PATH` | Include project name and "Go to Window" button |
+| `--app NAME` | Editor app for window switching: `cursor` (default), `vscode` |
 | `--sound NAME` | Override the default sound |
 | `--title TEXT` | Override the title |
 | `--message TEXT` | Override the message |
@@ -170,6 +172,55 @@ anthroping input --alert --project /path/to/project
 
 - **Notification** (default): Standard macOS notification. May be missed if Do Not Disturb is on.
 - **Alert** (`--alert`): Popup dialog that stays visible until dismissed. Recommended for hooks.
+
+## Claude Code Hooks Reference
+
+Claude Code supports several hook events. Here's how to use anthroping with each:
+
+| Hook Event | When it Fires | Suggested anthroping Event |
+|------------|---------------|---------------------------|
+| `Stop` | Claude finishes responding | `done` |
+| `Notification` | Claude needs input/permission | `input` |
+| `SubagentStop` | Background task completes | `subagent` |
+| `PreToolUse` | Before tool execution | `waiting` |
+| `PostToolUse` | After tool completes | `done` |
+| `UserPromptSubmit` | User submits prompt | - |
+
+### Full Hook Configuration Example
+
+```json
+{
+  "hooks": {
+    "Stop": [{
+      "matcher": "",
+      "hooks": [{"type": "command", "command": "anthroping done --alert --project \"$PWD\""}]
+    }],
+    "Notification": [{
+      "matcher": "",
+      "hooks": [{"type": "command", "command": "anthroping input --alert --project \"$PWD\""}]
+    }],
+    "SubagentStop": [{
+      "matcher": "",
+      "hooks": [{"type": "command", "command": "anthroping subagent --alert --project \"$PWD\""}]
+    }]
+  }
+}
+```
+
+### VS Code Users
+
+If using VS Code instead of Cursor, add `--app vscode`:
+
+```json
+{
+  "hooks": {
+    "Stop": [{
+      "matcher": "",
+      "hooks": [{"type": "command", "command": "anthroping done --alert --project \"$PWD\" --app vscode"}]
+    }]
+  }
+}
+```
 
 ## Development
 
