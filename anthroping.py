@@ -11,10 +11,12 @@ Events:
   error     Something went wrong
   waiting   Claude is waiting for approval
   thinking  Long task in progress
+  subagent  Background task (subagent) finished
 
 Options:
   --alert            Show as popup dialog (always visible)
   --project PATH     Include project name and enable "Go to Window" button
+  --app NAME         Editor app for window switching (cursor, vscode, default: cursor)
   --sound NAME       Override the default sound for this event
   --title TEXT       Override the title
   --message TEXT     Override the message
@@ -46,6 +48,7 @@ class NotificationEvent(Enum):
     ERROR = "error"
     WAITING = "waiting"
     THINKING = "thinking"
+    SUBAGENT = "subagent"  # For SubagentStop hooks (v1.0.41+)
 
 
 DEFAULT_EVENTS: dict[NotificationEvent, EventConfig] = {
@@ -84,7 +87,19 @@ DEFAULT_EVENTS: dict[NotificationEvent, EventConfig] = {
         "subtitle": "Be patient",
         "icon": "🧠",
     },
+    NotificationEvent.SUBAGENT: {
+        "title": "Subagent Complete",
+        "message": "Background task finished",
+        "sound": "Blow",
+        "subtitle": "Check results",
+        "icon": "🔧",
+    },
 }
+
+
+def sanitize_for_applescript(text: str) -> str:
+    """Escape special characters for safe AppleScript string embedding."""
+    return text.replace("\\", "\\\\").replace('"', '\\"')
 
 
 def play_sound(sound_name: str) -> None:
@@ -96,33 +111,51 @@ def play_sound(sound_name: str) -> None:
 
 def send_notification(config: EventConfig) -> None:
     """Send a macOS notification with sound."""
-    title = f"{config['icon']} {config['title']}"
-    script = f'''
-    display notification "{config["message"]}" with title "{title}" subtitle "{config["subtitle"]}" sound name "{config["sound"]}"
-    '''
+    title = sanitize_for_applescript(f"{config['icon']} {config['title']}")
+    message = sanitize_for_applescript(config["message"])
+    subtitle = sanitize_for_applescript(config["subtitle"])
+    sound = sanitize_for_applescript(config["sound"])
+    script = f"""
+    display notification "{message}" with title "{title}" subtitle "{subtitle}" sound name "{sound}"
+    """
     subprocess.run(["osascript", "-e", script], check=True)
+
+
+APP_NAMES: dict[str, str] = {
+    "cursor": "Cursor",
+    "vscode": "Code",
+    "code": "Code",
+}
 
 
 def send_alert_dialog(
     config: EventConfig,
     project_path: str | None = None,
     timeout: int = 10,
+    app: str = "cursor",
 ) -> None:
     """Send a popup alert dialog that stays visible until dismissed."""
     play_sound(config["sound"])
 
+    # Sanitize all user-controllable inputs
+    icon = sanitize_for_applescript(config["icon"])
+    message = sanitize_for_applescript(config["message"])
+    title = sanitize_for_applescript(config["title"])
+
     project_name = ""
     if project_path:
-        project_name = project_path.rstrip("/").split("/")[-1]
+        project_name = sanitize_for_applescript(project_path.rstrip("/").split("/")[-1])
+
+    app_name = APP_NAMES.get(app.lower(), "Cursor")
 
     if project_name:
-        script = f'''
-        set dialogResult to display dialog "{config["icon"]} {config["message"]}
+        script = f"""
+        set dialogResult to display dialog "{icon} {message}
 
-Project: {project_name}" with title "{config["title"]}" buttons {{"OK", "Go to Window"}} default button "Go to Window" giving up after {timeout}
+Project: {project_name}" with title "{title}" buttons {{"OK", "Go to Window"}} default button "Go to Window" giving up after {timeout}
         if button returned of dialogResult is "Go to Window" then
             tell application "System Events"
-                tell process "Cursor"
+                tell process "{app_name}"
                     set frontmost to true
                     set windowList to every window
                     repeat with w in windowList
@@ -134,13 +167,13 @@ Project: {project_name}" with title "{config["title"]}" buttons {{"OK", "Go to W
                     end repeat
                 end tell
             end tell
-            tell application "Cursor" to activate
+            tell application "{app_name}" to activate
         end if
-        '''
+        """
     else:
-        script = f'''
-        display dialog "{config["icon"]} {config["message"]}" with title "{config["title"]}" buttons {{"OK"}} default button "OK" giving up after {timeout}
-        '''
+        script = f"""
+        display dialog "{icon} {message}" with title "{title}" buttons {{"OK"}} default button "OK" giving up after {timeout}
+        """
 
     subprocess.Popen(["osascript", "-e", script])
 
@@ -183,6 +216,7 @@ def main() -> None:
         args.remove("--alert")
 
     project_path = parse_arg(args, "--project")
+    app = parse_arg(args, "--app") or "cursor"
     sound_override = parse_arg(args, "--sound")
     title_override = parse_arg(args, "--title")
     message_override = parse_arg(args, "--message")
@@ -214,7 +248,7 @@ def main() -> None:
     }
 
     if use_alert:
-        send_alert_dialog(config, project_path, timeout)
+        send_alert_dialog(config, project_path, timeout, app)
     else:
         send_notification(config)
 

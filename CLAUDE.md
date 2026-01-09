@@ -15,7 +15,16 @@ tests/            # pytest tests
 uv run anthroping done --alert          # Test locally
 uv run pytest                           # Run tests
 uv run ruff check .                     # Lint
+uv run pre-commit run --all-files       # Run all pre-commit checks (REQUIRED before committing)
 ```
+
+## Before Committing
+
+**ALWAYS run pre-commit before committing:**
+```bash
+uv run pre-commit run --all-files
+```
+This runs black, isort, pyright, codespell, and ruff. Fix any issues before committing.
 
 ## Install Options
 
@@ -35,11 +44,13 @@ uvx --from git+https://github.com/araa47/anthroping anthroping done
 
 ## Key Components
 
-- `NotificationEvent` enum: done, input, error, waiting, thinking
+- `NotificationEvent` enum: done, input, error, waiting, thinking, subagent
 - `DEFAULT_EVENTS` dict: default config for each event (title, message, sound, subtitle, icon)
+- `APP_NAMES` dict: maps app flags to process names (cursor→Cursor, vscode→Code)
+- `sanitize_for_applescript()`: escapes special characters to prevent injection
 - `parse_arg()`: extracts CLI flags
 - `send_notification()`: macOS notification via AppleScript
-- `send_alert_dialog()`: popup dialog via AppleScript with Cursor integration
+- `send_alert_dialog()`: popup dialog via AppleScript with Cursor/VS Code integration
 
 ## CLI Flags
 
@@ -49,5 +60,6 @@ All customization via CLI - no config file:
 - `--title TEXT`: override title
 - `--message TEXT`: override message
 - `--icon EMOJI`: override icon
-- `--project PATH`: Cursor window integration
+- `--project PATH`: window integration (extracts project name)
+- `--app NAME`: editor app (cursor, vscode)
 - `--timeout SEC`: alert dismiss timeout
