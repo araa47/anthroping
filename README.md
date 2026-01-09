@@ -23,7 +23,7 @@ osascript -e 'display notification "Test" with title "Test"'
 
 ## Quick Start
 
-Add this to your Claude Code settings (`~/.claude/settings.json`):
+No installation required - add this to your Claude Code settings (`~/.claude/settings.json`):
 
 ```json
 {
@@ -54,7 +54,48 @@ Add this to your Claude Code settings (`~/.claude/settings.json`):
 }
 ```
 
-That's it! No installation required - `uvx` fetches and runs the tool directly from GitHub.
+> **Note**: `uvx` fetches from GitHub each time, adding ~1-2s latency. For instant notifications, see [Faster Notifications](#faster-notifications) below.
+
+## Faster Notifications
+
+Install globally so `anthroping` runs instantly:
+
+```bash
+uv tool install git+https://github.com/araa47/anthroping
+```
+
+Then simplify your hooks:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "anthroping done --alert --project \"$PWD\""
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "anthroping input --alert --project \"$PWD\""
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+To update later: `uv tool upgrade anthroping`
 
 ## Events
 
@@ -92,7 +133,7 @@ Customize directly in your hooks - no config file needed:
         "hooks": [
           {
             "type": "command",
-            "command": "uvx --from git+https://github.com/araa47/anthroping anthroping done --alert --project \"$PWD\" --sound Funk --icon 🎉"
+            "command": "anthroping done --alert --project \"$PWD\" --sound Funk --icon 🎉"
           }
         ]
       }

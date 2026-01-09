@@ -17,6 +17,16 @@ uv run pytest                           # Run tests
 uv run ruff check .                     # Lint
 ```
 
+## Install Options
+
+```bash
+# Fast: install globally so `anthroping` command works everywhere
+uv tool install git+https://github.com/araa47/anthroping
+
+# Slow: run via uvx (fetches each time)
+uvx --from git+https://github.com/araa47/anthroping anthroping done
+```
+
 ## Code Style
 
 - Python 3.13+, strict type hints
