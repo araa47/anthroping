@@ -115,9 +115,9 @@ def send_notification(config: EventConfig) -> None:
     message = sanitize_for_applescript(config["message"])
     subtitle = sanitize_for_applescript(config["subtitle"])
     sound = sanitize_for_applescript(config["sound"])
-    script = f'''
+    script = f"""
     display notification "{message}" with title "{title}" subtitle "{subtitle}" sound name "{sound}"
-    '''
+    """
     subprocess.run(["osascript", "-e", script], check=True)
 
 
@@ -144,14 +144,12 @@ def send_alert_dialog(
 
     project_name = ""
     if project_path:
-        project_name = sanitize_for_applescript(
-            project_path.rstrip("/").split("/")[-1]
-        )
+        project_name = sanitize_for_applescript(project_path.rstrip("/").split("/")[-1])
 
     app_name = APP_NAMES.get(app.lower(), "Cursor")
 
     if project_name:
-        script = f'''
+        script = f"""
         set dialogResult to display dialog "{icon} {message}
 
 Project: {project_name}" with title "{title}" buttons {{"OK", "Go to Window"}} default button "Go to Window" giving up after {timeout}
@@ -171,11 +169,11 @@ Project: {project_name}" with title "{title}" buttons {{"OK", "Go to Window"}} d
             end tell
             tell application "{app_name}" to activate
         end if
-        '''
+        """
     else:
-        script = f'''
+        script = f"""
         display dialog "{icon} {message}" with title "{title}" buttons {{"OK"}} default button "OK" giving up after {timeout}
-        '''
+        """
 
     subprocess.Popen(["osascript", "-e", script])
 

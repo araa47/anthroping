@@ -15,7 +15,16 @@ tests/            # pytest tests
 uv run anthroping done --alert          # Test locally
 uv run pytest                           # Run tests
 uv run ruff check .                     # Lint
+uv run pre-commit run --all-files       # Run all pre-commit checks (REQUIRED before committing)
 ```
+
+## Before Committing
+
+**ALWAYS run pre-commit before committing:**
+```bash
+uv run pre-commit run --all-files
+```
+This runs black, isort, pyright, codespell, and ruff. Fix any issues before committing.
 
 ## Install Options
 
