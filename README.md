@@ -2,6 +2,25 @@
 
 macOS notifications for Claude Code. Get notified when Claude finishes work or needs your input.
 
+## Requirements
+
+- macOS
+- [uv](https://github.com/astral-sh/uv) installed (`brew install uv` or `curl -LsSf https://astral.sh/uv/install.sh | sh`)
+
+## Setup Notifications
+
+For notifications to work, grant permission to Script Editor (which runs the AppleScript):
+
+1. Open **System Settings** > **Notifications**
+2. Find **Script Editor** and enable **Allow Notifications**
+3. Set alert style to **Alerts** or **Banners** as preferred
+
+If Script Editor doesn't appear in the list, run this first to trigger the permission prompt:
+
+```bash
+osascript -e 'display notification "Test" with title "Test"'
+```
+
 ## Quick Start
 
 Add this to your Claude Code settings (`~/.claude/settings.json`):
@@ -36,26 +55,6 @@ Add this to your Claude Code settings (`~/.claude/settings.json`):
 ```
 
 That's it! No installation required - `uvx` fetches and runs the tool directly from GitHub.
-
-## Requirements
-
-- macOS
-- [uv](https://github.com/astral-sh/uv) installed (`brew install uv` or `curl -LsSf https://astral.sh/uv/install.sh | sh`)
-
-## Enable Notifications for Script Editor
-
-For notifications to work, you need to grant permission to Script Editor (which runs the AppleScript):
-
-1. Open **System Settings** > **Notifications**
-2. Scroll down and find **Script Editor**
-3. Enable **Allow Notifications**
-4. Set alert style to **Alerts** or **Banners** as preferred
-
-If Script Editor doesn't appear in the list, run this command first to trigger the permission prompt:
-
-```bash
-osascript -e 'display notification "Test" with title "Test"'
-```
 
 ## Events
 
