@@ -1,8 +1,12 @@
+from typing import Any
+from unittest.mock import MagicMock, patch
+
 from anthroping import (
     DEFAULT_EVENTS,
     NotificationEvent,
     parse_arg,
     sanitize_for_applescript,
+    send_alert_dialog,
 )
 
 
@@ -65,3 +69,30 @@ def test_sanitize_for_applescript():
     assert sanitize_for_applescript('mixed "quotes" and \\slashes') == (
         'mixed \\"quotes\\" and \\\\slashes'
     )
+
+
+@patch("anthroping.subprocess.Popen")
+@patch("anthroping.play_sound")
+def test_send_alert_dialog_timeout_bounds(
+    _mock_play_sound: MagicMock, mock_popen: MagicMock
+) -> None:
+    """send_alert_dialog should clamp timeout to reasonable bounds."""
+    config = DEFAULT_EVENTS[NotificationEvent.DONE]
+
+    # Test that very large timeout is clamped to 300
+    send_alert_dialog(config, timeout=9999)
+    call_args: Any = mock_popen.call_args[0][0]
+    script: str = call_args[2]  # osascript -e <script>
+    assert "giving up after 300" in script
+
+    # Test that negative timeout is clamped to 1
+    send_alert_dialog(config, timeout=-5)
+    call_args = mock_popen.call_args[0][0]
+    script = call_args[2]
+    assert "giving up after 1" in script
+
+    # Test that zero timeout is clamped to 1
+    send_alert_dialog(config, timeout=0)
+    call_args = mock_popen.call_args[0][0]
+    script = call_args[2]
+    assert "giving up after 1" in script

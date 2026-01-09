@@ -184,6 +184,9 @@ Claude Code supports several hook events. Here's how to use anthroping with each
 | `SubagentStop` | Background task completes | `subagent` |
 | `PreToolUse` | Before tool execution | `waiting` |
 | `PostToolUse` | After tool completes | `done` |
+| `PermissionRequest` | Permission dialog would appear | `waiting` |
+| `PreCompact` | Before context compaction | - |
+| `SessionStart` | Session begins or resumes | - |
 | `UserPromptSubmit` | User submits prompt | - |
 
 ### Full Hook Configuration Example

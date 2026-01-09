@@ -135,6 +135,8 @@ def send_alert_dialog(
     app: str = "cursor",
 ) -> None:
     """Send a popup alert dialog that stays visible until dismissed."""
+    # Ensure timeout is within reasonable bounds (1-300 seconds)
+    timeout = max(1, min(timeout, 300))
     play_sound(config["sound"])
 
     # Sanitize all user-controllable inputs
