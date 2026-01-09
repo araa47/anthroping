@@ -2,11 +2,8 @@
 """
 anthroping - macOS notifications for Claude Code
 
-Get notified when Claude Code needs your attention with distinct sounds for different events.
-
 Usage:
-  uvx anthroping <event> [message] [--alert] [--project PATH]
-  anthroping <event> [message] [--alert] [--project PATH]
+  anthroping <event> [options]
 
 Events:
   done      Work completed successfully
@@ -16,13 +13,31 @@ Events:
   thinking  Long task in progress
 
 Options:
-  --alert           Show as popup dialog (always visible, bypasses notification settings)
-  --project PATH    Include project name in alert and enable "Go to Window" button
+  --alert            Show as popup dialog (always visible)
+  --project PATH     Include project name and enable "Go to Window" button
+  --sound NAME       Override the default sound for this event
+  --title TEXT       Override the title
+  --message TEXT     Override the message
+  --icon EMOJI       Override the icon
+  --timeout SECONDS  Alert auto-dismiss timeout (default: 10)
+  --sounds           List available macOS sounds
 """
 
 import subprocess
 import sys
 from enum import Enum
+from pathlib import Path
+from typing import TypedDict
+
+
+class EventConfig(TypedDict):
+    """Event configuration with all required fields."""
+
+    title: str
+    message: str
+    sound: str
+    subtitle: str
+    icon: str
 
 
 class NotificationEvent(Enum):
@@ -33,40 +48,39 @@ class NotificationEvent(Enum):
     THINKING = "thinking"
 
 
-# Event configurations with distinct sounds and messages
-EVENTS = {
+DEFAULT_EVENTS: dict[NotificationEvent, EventConfig] = {
     NotificationEvent.DONE: {
-        "title": "✅ Claude Complete",
+        "title": "Claude Complete",
         "message": "Work finished successfully!",
-        "sound": "Glass",  # Pleasant completion sound
+        "sound": "Glass",
         "subtitle": "Ready for review",
         "icon": "✅",
     },
     NotificationEvent.INPUT: {
-        "title": "🤔 Input Needed",
+        "title": "Input Needed",
         "message": "Claude is waiting for your response",
-        "sound": "Ping",  # Attention-grabbing but not alarming
+        "sound": "Ping",
         "subtitle": "Action required",
         "icon": "🤔",
     },
     NotificationEvent.ERROR: {
-        "title": "❌ Error Occurred",
+        "title": "Error Occurred",
         "message": "Something needs your attention",
-        "sound": "Basso",  # Deep sound for errors
+        "sound": "Basso",
         "subtitle": "Check Claude",
         "icon": "❌",
     },
     NotificationEvent.WAITING: {
-        "title": "⏳ Awaiting Approval",
+        "title": "Awaiting Approval",
         "message": "Claude needs permission to continue",
-        "sound": "Purr",  # Gentle reminder
+        "sound": "Purr",
         "subtitle": "Approve to proceed",
         "icon": "⏳",
     },
     NotificationEvent.THINKING: {
-        "title": "🧠 Still Working",
+        "title": "Still Working",
         "message": "Long task in progress...",
-        "sound": "Pop",  # Soft notification
+        "sound": "Pop",
         "subtitle": "Be patient",
         "icon": "🧠",
     },
@@ -74,49 +88,38 @@ EVENTS = {
 
 
 def play_sound(sound_name: str) -> None:
-    """Play a system sound."""
+    """Play a macOS system sound."""
     sound_path = f"/System/Library/Sounds/{sound_name}.aiff"
-    subprocess.Popen(["afplay", sound_path])  # Non-blocking
+    if Path(sound_path).exists():
+        subprocess.Popen(["afplay", sound_path])
 
 
-def send_notification(
-    event: NotificationEvent,
-    custom_message: str | None = None,
-) -> None:
+def send_notification(config: EventConfig) -> None:
     """Send a macOS notification with sound."""
-    config = EVENTS[event]
-    message = custom_message or config["message"]
-
-    # AppleScript for rich notification
+    title = f"{config['icon']} {config['title']}"
     script = f'''
-    display notification "{message}" with title "{config["title"]}" subtitle "{config["subtitle"]}" sound name "{config["sound"]}"
+    display notification "{config["message"]}" with title "{title}" subtitle "{config["subtitle"]}" sound name "{config["sound"]}"
     '''
     subprocess.run(["osascript", "-e", script], check=True)
 
 
 def send_alert_dialog(
-    event: NotificationEvent,
-    custom_message: str | None = None,
+    config: EventConfig,
     project_path: str | None = None,
+    timeout: int = 10,
 ) -> None:
-    """Send a popup alert dialog - ALWAYS visible, can't be missed!"""
-    config = EVENTS[event]
-    message = custom_message or config["message"]
-
-    # Play sound first (non-blocking)
+    """Send a popup alert dialog that stays visible until dismissed."""
     play_sound(config["sound"])
 
-    # Extract project name from path for window matching
     project_name = ""
     if project_path:
         project_name = project_path.rstrip("/").split("/")[-1]
 
-    # AppleScript to show alert and optionally go to matching Cursor window
     if project_name:
         script = f'''
-        set dialogResult to display dialog "{config["icon"]} {message}
+        set dialogResult to display dialog "{config["icon"]} {config["message"]}
 
-Project: {project_name}" with title "{config["title"]}" buttons {{"OK", "Go to Window"}} default button "Go to Window" giving up after 10
+Project: {project_name}" with title "{config["title"]}" buttons {{"OK", "Go to Window"}} default button "Go to Window" giving up after {timeout}
         if button returned of dialogResult is "Go to Window" then
             tell application "System Events"
                 tell process "Cursor"
@@ -136,56 +139,63 @@ Project: {project_name}" with title "{config["title"]}" buttons {{"OK", "Go to W
         '''
     else:
         script = f'''
-        display dialog "{config["icon"]} {message}" with title "{config["title"]}" buttons {{"OK"}} default button "OK" giving up after 8
+        display dialog "{config["icon"]} {config["message"]}" with title "{config["title"]}" buttons {{"OK"}} default button "OK" giving up after {timeout}
         '''
 
-    subprocess.Popen(["osascript", "-e", script])  # Non-blocking
+    subprocess.Popen(["osascript", "-e", script])
 
 
-def send_say_notification(
-    event: NotificationEvent,
-    custom_message: str | None = None,
-) -> None:
-    """Speak the notification out loud."""
-    config = EVENTS[event]
-    message = custom_message or config["message"]
-    # Use macOS say command for voice notification
-    subprocess.Popen(["say", "-v", "Samantha", message])
+def list_sounds() -> None:
+    """List available macOS system sounds."""
+    sound_dir = Path("/System/Library/Sounds")
+    if sound_dir.exists():
+        sounds = sorted(p.stem for p in sound_dir.glob("*.aiff"))
+        print("Available macOS sounds:")
+        for sound in sounds:
+            print(f"  {sound}")
+
+
+def parse_arg(args: list[str], flag: str) -> str | None:
+    """Extract a flag value from args, modifying args in place."""
+    if flag in args:
+        idx = args.index(flag)
+        args.pop(idx)
+        if idx < len(args):
+            return args.pop(idx)
+    return None
 
 
 def main() -> None:
     if len(sys.argv) < 2:
         print(__doc__)
-        print("\nAvailable events:")
-        for event in NotificationEvent:
-            config = EVENTS[event]
-            print(f"  {event.value:10} - {config['title']}")
-        print("\nExamples:")
-        print("  anthroping done")
-        print("  anthroping input --alert")
-        print("  anthroping done --alert --project /path/to/project")
-        print("  uvx anthroping done --alert")
         sys.exit(1)
 
-    # Parse args
     args = sys.argv[1:]
-    use_alert = "--alert" in args
-    project_path = None
 
+    # Handle --sounds command
+    if "--sounds" in args:
+        list_sounds()
+        return
+
+    # Parse flags
+    use_alert = "--alert" in args
     if use_alert:
         args.remove("--alert")
 
-    # Extract --project argument
-    if "--project" in args:
-        idx = args.index("--project")
-        args.pop(idx)
-        if idx < len(args):
-            project_path = args.pop(idx)
+    project_path = parse_arg(args, "--project")
+    sound_override = parse_arg(args, "--sound")
+    title_override = parse_arg(args, "--title")
+    message_override = parse_arg(args, "--message")
+    icon_override = parse_arg(args, "--icon")
+    timeout_str = parse_arg(args, "--timeout")
+    timeout = int(timeout_str) if timeout_str else 10
+
+    if not args:
+        print("Error: No event specified")
+        sys.exit(1)
 
     event_name = args[0].lower()
-    custom_message = " ".join(args[1:]) if len(args) > 1 else None
 
-    # Match event
     try:
         event = NotificationEvent(event_name)
     except ValueError:
@@ -193,14 +203,23 @@ def main() -> None:
         print(f"Valid events: {', '.join(e.value for e in NotificationEvent)}")
         sys.exit(1)
 
+    # Build config from defaults + overrides
+    defaults = DEFAULT_EVENTS[event]
+    config: EventConfig = {
+        "title": title_override or defaults["title"],
+        "message": message_override or defaults["message"],
+        "sound": sound_override or defaults["sound"],
+        "subtitle": defaults["subtitle"],
+        "icon": icon_override or defaults["icon"],
+    }
+
     if use_alert:
-        send_alert_dialog(event, custom_message, project_path)
-        print(f"🔔 Alert shown: {EVENTS[event]['title']}")
+        send_alert_dialog(config, project_path, timeout)
     else:
-        send_notification(event, custom_message)
-        print(f"🔔 Notification sent: {EVENTS[event]['title']}")
+        send_notification(config)
+
+    print(f"🔔 {config['title']}")
 
 
 if __name__ == "__main__":
     main()
-

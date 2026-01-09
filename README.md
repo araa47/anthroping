@@ -58,8 +58,8 @@ That's it! No installation required - `uvx` fetches and runs the tool directly f
 
 ## Events
 
-| Event | Description | Sound |
-|-------|-------------|-------|
+| Event | Description | Default Sound |
+|-------|-------------|---------------|
 | `done` | Work completed successfully | Glass |
 | `input` | Claude needs your input | Ping |
 | `error` | Something went wrong | Basso |
@@ -70,43 +70,71 @@ That's it! No installation required - `uvx` fetches and runs the tool directly f
 
 | Option | Description |
 |--------|-------------|
-| `--alert` | Show as popup dialog instead of notification (always visible, can't be missed) |
-| `--project PATH` | Include project name in alert and show "Go to Window" button for Cursor |
+| `--alert` | Show as popup dialog instead of notification |
+| `--project PATH` | Include project name and "Go to Window" button for Cursor |
+| `--sound NAME` | Override the default sound |
+| `--title TEXT` | Override the title |
+| `--message TEXT` | Override the message |
+| `--icon EMOJI` | Override the icon |
+| `--timeout SEC` | Alert auto-dismiss timeout (default: 10) |
+| `--sounds` | List available macOS sounds |
+
+## Customization
+
+Customize directly in your hooks - no config file needed:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uvx --from git+https://github.com/araa47/anthroping anthroping done --alert --project \"$PWD\" --sound Funk --icon 🎉"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Available Sounds
+
+Run `anthroping --sounds` to list all available macOS sounds:
+
+```
+Basso, Blow, Bottle, Frog, Funk, Glass, Hero, Morse, Ping, Pop, Purr, Sosumi, Submarine, Tink
+```
 
 ## Examples
 
 ```bash
-# Simple notification (from GitHub)
-uvx --from git+https://github.com/araa47/anthroping anthroping done
+# Basic notification
+anthroping done
 
-# Alert popup (recommended for hooks)
-uvx --from git+https://github.com/araa47/anthroping anthroping input --alert
+# Alert popup with custom sound
+anthroping done --alert --sound Funk
 
-# With project path (shows "Go to Window" button)
-uvx --from git+https://github.com/araa47/anthroping anthroping done --alert --project /path/to/project
+# Custom everything
+anthroping done --alert --sound Hero --title "All Done!" --icon 🎉
 
-# If installed locally
-anthroping done --alert
+# With project (for Cursor integration)
+anthroping input --alert --project /path/to/project
 ```
 
 ## Alert vs Notification
 
-- **Notification** (default): Standard macOS notification that appears in the corner. May be missed if Do Not Disturb is on.
-- **Alert** (`--alert`): Popup dialog that stays on screen until dismissed. Recommended for Claude Code hooks since you won't miss it.
+- **Notification** (default): Standard macOS notification. May be missed if Do Not Disturb is on.
+- **Alert** (`--alert`): Popup dialog that stays visible until dismissed. Recommended for hooks.
 
 ## Development
 
 ```bash
-# Clone and setup
 git clone https://github.com/araa47/anthroping
 cd anthroping
-
-# If using direnv
-direnv allow
-
-# Or manually with uv
 uv sync --all-extras --dev
-
-# Run locally
 uv run anthroping done --alert
 ```
