@@ -224,7 +224,11 @@ def main() -> None:
     message_override = parse_arg(args, "--message")
     icon_override = parse_arg(args, "--icon")
     timeout_str = parse_arg(args, "--timeout")
-    timeout = int(timeout_str) if timeout_str else 10
+    try:
+        timeout = int(timeout_str) if timeout_str else 10
+    except ValueError:
+        print(f"Error: Invalid timeout value '{timeout_str}', using default of 10")
+        timeout = 10
 
     if not args:
         print("Error: No event specified")
